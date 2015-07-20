@@ -51,6 +51,7 @@ user_permission = Permission(RoleNeed("user"))
 from octoprint.printer import get_connection_options
 from octoprint.printer.profile import PrinterProfileManager
 from octoprint.printer.standard import Printer
+from octoprint.printer.authentise import AuthentisePrinter
 from octoprint.settings import settings
 import octoprint.users as users
 import octoprint.events as events
@@ -182,7 +183,8 @@ class Server():
 		storage_managers = dict()
 		storage_managers[octoprint.filemanager.FileDestinations.LOCAL] = octoprint.filemanager.storage.LocalFileStorage(s.getBaseFolder("uploads"))
 		fileManager = octoprint.filemanager.FileManager(analysisQueue, slicingManager, printerProfileManager, initial_storage_managers=storage_managers)
-		printer = Printer(fileManager, analysisQueue, printerProfileManager)
+		# printer = Printer(fileManager, analysisQueue, printerProfileManager)
+		printer = AuthentisePrinter(fileManager, analysisQueue, printerProfileManager)
 		appSessionManager = util.flask.AppSessionManager()
 		pluginLifecycleManager = LifecycleManager(pluginManager)
 
@@ -400,7 +402,10 @@ class Server():
 			printer_profile = printerProfileManager.get_default()
 			connectionOptions = get_connection_options()
 			if port in connectionOptions["ports"]:
-				printer.connect(port=port, baudrate=baudrate, profile=printer_profile["id"] if "id" in printer_profile else "_default")
+                                if isinstance(printer, AuthentisePrinter):
+                                    printer.connect(authentise_printer_id=1234, profile=printer_profile["id"] if "id" in printer_profile else "_default")
+                                else:
+                                    printer.connect(port=port, baudrate=baudrate, profile=printer_profile["id"] if "id" in printer_profile else "_default")
 
 		# start up watchdogs
 		if s.getBoolean(["feature", "pollWatched"]):
