@@ -5,15 +5,17 @@ __license__ = "GNU Affero General Public License http://www.gnu.org/licenses/agp
 __copyright__ = "Copyright (C) 2013 David Braam - Released under terms of the AGPLv3 License"
 
 
-import os
-import glob
-import time
-import re
-import threading
 import Queue as queue
+import glob
 import logging
-import serial
 import octoprint.plugin
+import os
+import re
+import requests
+import serial
+import threading
+import time
+import urlparse
 
 from collections import deque
 
@@ -1760,7 +1762,8 @@ class MachineCom(object):
 		if gcode is not None and gcode in self._long_running_commands:
 			self._long_running_command = True
 
-class AuthentiseMachineCom(MachineCom):
+AUTHENTISE_URL = 'https://print.authentise.com'
+class AuthentiseMachineCom(object):
     STATE_NONE = 0
     STATE_OPEN_SERIAL = 1
     STATE_DETECT_SERIAL = 2
@@ -1800,6 +1803,12 @@ class AuthentiseMachineCom(MachineCom):
         self.monitoring_thread = threading.Thread(target=self._monitor_loop, name="comm._monitor")
         self.monitoring_thread.daemon = True
         self.monitoring_thread.start()
+
+        # get username/password
+        #TODO: This will be supplied by the plugin eventually
+        with open('creds.txt', 'r') as fin:
+            raw_creds = fin.read()
+            self._user, self._password = (cred.strip() for cred in raw_creds.strip().split(','))
 
     def __del__(self):
         self.close()
@@ -1930,6 +1939,7 @@ class AuthentiseMachineCom(MachineCom):
 
         if printing:
             eventManager().fire(Events.PRINT_FAILED, None)
+        self._changeState(self.STATE_CLOSED)
         eventManager().fire(Events.DISCONNECTED)
 
     def setTemperatureOffset(self, offsets):
@@ -1946,8 +1956,16 @@ class AuthentiseMachineCom(MachineCom):
                 return
 
         if self.isPrinting() or self.isOperational():
-            #TODO: create command uri and add to the command uri queue
-            pass
+            data = {'command': cmd}
+            printer_command_url = urlparse.urljoin(AUTHENTISE_URL, 'printer/instance/{}/command/'.format(self._authentise_printer_id))
+            response = requests.post(printer_command_url, json=data, auth=(self._user, self._password))
+            if not response.ok:
+                self._log('Warning: Got invalid response {} for {}'.format(response, response.request))
+                return
+
+            self._log('Sent {} to {} with response {}'.format(cmd, response.request, response))
+            command_uri = response.headers['Location']
+            self._command_uri_queue.put({'uri': command_uri, 'tries': 0})
 
     def startPrint(self):
         if not self.isOperational() or self.isPrinting():
@@ -1956,8 +1974,7 @@ class AuthentiseMachineCom(MachineCom):
         try:
             #TODO: add logic to make print request here
             payload = {}
-            response = requests.post('http://print.authentise.com/print/', json=payload)
-
+            response = requests.post('http://print.authentise.com/print/', json=payload, auth=(self._user, self._password))
 
             self._changeState(self.STATE_PRINTING)
             eventManager().fire(Events.PRINT_STARTED, None)
@@ -2069,7 +2086,7 @@ class AuthentiseMachineCom(MachineCom):
     ##~~ Serial monitor processing received messages
 
     def _monitor_loop(self):
-        def _readline(self):
+        def _readline():
             #TODO: read the response from command uri in the command uri queue
             # if the response is older that 2 minutes, pop it from the queue    
             # if the response has a gcode response, return it and pop it from the queue
@@ -2081,7 +2098,9 @@ class AuthentiseMachineCom(MachineCom):
 
         while self._monitoring_active:
             try:
-                line = self._readline()
+                line = _readline()
+                if not line:
+                    continue
 
                 #TODO: if the line is a temp line:
                 if 'T:' in line: #this is probably totally wrong

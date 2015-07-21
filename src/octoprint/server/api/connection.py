@@ -8,7 +8,7 @@ __copyright__ = "Copyright (C) 2014 The OctoPrint Project - Released under terms
 from flask import request, jsonify, make_response
 
 from octoprint.settings import settings
-from octoprint.printer import get_connection_options
+from octoprint.printer import get_connection_options, authentise
 from octoprint.server import printer, printerProfileManager, NO_CONTENT
 from octoprint.server.api import api
 from octoprint.server.util.flask import restricted_access, get_json_command_from_request
@@ -66,7 +66,10 @@ def connectionCommand():
 		if "autoconnect" in data.keys():
 			settings().setBoolean(["serial", "autoconnect"], data["autoconnect"])
 		settings().save()
-		printer.connect(port=port, baudrate=baudrate, profile=printerProfile)
+                if isinstance(printer, authentise.AuthentisePrinter):
+                    printer.connect(authentise_printer_id=2773, profile=printerProfile)
+                else:
+                    printer.connect(port=port, baudrate=baudrate, profile=printerProfile)
 	elif command == "disconnect":
 		printer.disconnect()
 	elif command == "fake_ack":

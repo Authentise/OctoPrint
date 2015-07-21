@@ -403,7 +403,7 @@ class Server():
 			connectionOptions = get_connection_options()
 			if port in connectionOptions["ports"]:
                                 if isinstance(printer, AuthentisePrinter):
-                                    printer.connect(authentise_printer_id=1234, profile=printer_profile["id"] if "id" in printer_profile else "_default")
+                                    printer.connect(authentise_printer_id=2773, profile=printer_profile["id"] if "id" in printer_profile else "_default")
                                 else:
                                     printer.connect(port=port, baudrate=baudrate, profile=printer_profile["id"] if "id" in printer_profile else "_default")
 

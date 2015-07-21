@@ -153,14 +153,10 @@ class AuthentisePrinter(PrinterInterface, comm.MachineComPrintCallback):
 
     def _on_event_MetadataAnalysisFinished(self, event, data):
         if self._selectedFile:
-            self._setJobData(self._selectedFile["filename"],
-                             self._selectedFile["filesize"],
-                             self._selectedFile["sd"])
+            self._setJobData(self._selectedFile["filename"])
 
     def _on_event_MetadataStatisticsUpdated(self, event, data):
-        self._setJobData(self._selectedFile["filename"],
-                         self._selectedFile["filesize"],
-                         self._selectedFile["sd"])
+        self._setJobData(self._selectedFile["filename"])
 
     #~~ progress plugin reporting
 
@@ -193,6 +189,7 @@ class AuthentisePrinter(PrinterInterface, comm.MachineComPrintCallback):
             self._comm.close()
         self._printerProfileManager.select(profile)
         self._comm = comm.AuthentiseMachineCom(authentise_printer_id=authentise_printer_id, callbackObject=self)
+        self._comm.on_connected()
 
     def disconnect(self):
         """
@@ -664,7 +661,7 @@ class AuthentisePrinter(PrinterInterface, comm.MachineComPrintCallback):
 
             self._setProgressData(0, None, None, None)
             self._setCurrentZ(None)
-            self._setJobData(None, None, None)
+            self._setJobData(None)
 
         self._setState(state)
 
@@ -703,7 +700,7 @@ class AuthentisePrinter(PrinterInterface, comm.MachineComPrintCallback):
         self._sdFilelistAvailable.set()
 
     def on_comm_file_selected(self, filename, filesize, sd):
-        self._setJobData(filename, filesize, sd)
+        self._setJobData(filename)
         self._stateMonitor.set_state({"text": self.get_state_string(), "flags": self._getStateFlags()})
 
         if self._printAfterSelect:
@@ -717,7 +714,7 @@ class AuthentisePrinter(PrinterInterface, comm.MachineComPrintCallback):
     def on_comm_file_transfer_started(self, filename, filesize):
         self._sdStreaming = True
 
-        self._setJobData(filename, filesize, True)
+        self._setJobData(filename)
         self._setProgressData(0.0, 0, 0, None)
         self._stateMonitor.set_state({"text": self.get_state_string(), "flags": self._getStateFlags()})
 
@@ -730,7 +727,7 @@ class AuthentisePrinter(PrinterInterface, comm.MachineComPrintCallback):
             self._streamingFinishedCallback(filename, filename, FileDestinations.SDCARD)
 
         self._setCurrentZ(None)
-        self._setJobData(None, None, None)
+        self._setJobData(None)
         self._setProgressData(None, None, None, None)
         self._stateMonitor.set_state({"text": self.get_state_string(), "flags": self._getStateFlags()})
 
