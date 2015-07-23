@@ -1,38 +1,54 @@
 # coding=utf-8
 """
-This module holds the standard implementation of the :class:`PrinterInterface` and it helpers.
+This module holds the standard implementation of the `PrinterPlugin`
 """
 
 from __future__ import absolute_import
 
-__author__ = "Gina Häußge <osd@foosel.net>"
+__author__ = "Gina Häußge <osd@foosel.net>, Scott Lemmon <scott@authentise.com>"
 __license__ = 'GNU Affero General Public License http://www.gnu.org/licenses/agpl.html'
-__copyright__ = "Copyright (C) 2014 The OctoPrint Project - Released under terms of the AGPLv3 License"
+__copyright__ = "Copyright (C) 2015 The OctoPrint Project - Released under terms of the AGPLv3 License"
 
 import copy
 import logging
 import os
 import threading
 import time
+import re
 
-from octoprint import util as util
+import octoprint.plugin
+
+from octoprint import util
 from octoprint.events import eventManager, Events
 from octoprint.filemanager import FileDestinations
 from octoprint.plugin import plugin_manager, ProgressPlugin
-from octoprint.printer import PrinterInterface, PrinterCallback, UnknownScript
+from octoprint.printer import PrinterCallback, UnknownScript
 from octoprint.printer.estimation import TimeEstimationHelper
 from octoprint.settings import settings
-from octoprint.util import comm as comm
+from octoprint.util import comm
 from octoprint.util import InvariantContainer
 
 
-class Printer(PrinterInterface, comm.MachineComPrintCallback):
+class OctoPrintPrinter(octoprint.plugin.PrinterPlugin,
+						octoprint.plugin.MachineComPrintCallbackPlugin):
 	"""
-	Default implementation of the :class:`PrinterInterface`. Manages the communication layer object and registers
+	Default implementation of the `PrinterPlugin`. Manages the communication layer object and registers
 	itself with it as a callback to react to changes on the communication layer.
 	"""
 
-	def __init__(self, fileManager, analysisQueue, printerProfileManager):
+	valid_axes = ("x", "y", "z", "e")
+	"""Valid axes identifiers."""
+
+	valid_tool_regex = re.compile("^(tool\d+)$")
+	"""Regex for valid tool identifiers."""
+
+	valid_heater_regex = re.compile("^(tool\d+|bed)$")
+	"""Regex for valid heater identifiers."""
+
+	def __init__(self):
+		pass
+
+	def startup(self, fileManager, analysisQueue, printerProfileManager):
 		from collections import deque
 
 		self._logger = logging.getLogger(__name__)
@@ -160,8 +176,8 @@ class Printer(PrinterInterface, comm.MachineComPrintCallback):
 
 	def _on_event_MetadataStatisticsUpdated(self, event, data):
 		self._setJobData(self._selectedFile["filename"],
-		                 self._selectedFile["filesize"],
-		                 self._selectedFile["sd"])
+				 self._selectedFile["filesize"],
+				 self._selectedFile["sd"])
 
 	#~~ progress plugin reporting
 
@@ -248,8 +264,8 @@ class Printer(PrinterInterface, comm.MachineComPrintCallback):
 			raise ValueError("axis must be a string: {axis}".format(axis=axis))
 
 		axis = axis.lower()
-		if not axis in PrinterInterface.valid_axes:
-			raise ValueError("axis must be any of {axes}: {axis}".format(axes=", ".join(PrinterInterface.valid_axes), axis=axis))
+		if not axis in self.valid_axes:
+			raise ValueError("axis must be any of {axes}: {axis}".format(axes=", ".join(self.valid_axes), axis=axis))
 		if not isinstance(amount, (int, long, float)):
 			raise ValueError("amount must be a valid number: {amount}".format(amount=amount))
 
@@ -264,7 +280,7 @@ class Printer(PrinterInterface, comm.MachineComPrintCallback):
 			else:
 				raise ValueError("axes is neither a list nor a string: {axes}".format(axes=axes))
 
-		validated_axes = filter(lambda x: x in PrinterInterface.valid_axes, map(lambda x: x.lower(), axes))
+		validated_axes = filter(lambda x: x in self.valid_axes, map(lambda x: x.lower(), axes))
 		if len(axes) != len(validated_axes):
 			raise ValueError("axes contains invalid axes: {axes}".format(axes=axes))
 
@@ -279,14 +295,14 @@ class Printer(PrinterInterface, comm.MachineComPrintCallback):
 		self.commands(["G91", "G1 E%s F%d" % (amount, extrusion_speed), "G90"])
 
 	def change_tool(self, tool):
-		if not PrinterInterface.valid_tool_regex.match(tool):
+		if not self.valid_tool_regex.match(tool):
 			raise ValueError("tool must match \"tool[0-9]+\": {tool}".format(tool=tool))
 
 		tool_num = int(tool[len("tool"):])
 		self.commands("T%d" % tool_num)
 
 	def set_temperature(self, heater, value):
-		if not PrinterInterface.valid_heater_regex.match(heater):
+		if not self.valid_heater_regex.match(heater):
 			raise ValueError("heater must match \"tool[0-9]+\" or \"bed\": {heater}".format(type=heater))
 
 		if not isinstance(value, (int, long, float)) or value < 0:
@@ -311,7 +327,7 @@ class Printer(PrinterInterface, comm.MachineComPrintCallback):
 		if not isinstance(offsets, dict):
 			raise ValueError("offsets must be a dict")
 
-		validated_keys = filter(lambda x: PrinterInterface.valid_heater_regex.match(x), offsets.keys())
+		validated_keys = filter(lambda x: self.valid_heater_regex.match(x), offsets.keys())
 		validated_values = filter(lambda x: isinstance(x, (int, long, float)), offsets.values())
 
 		if len(validated_keys) != len(offsets):

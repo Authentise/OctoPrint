@@ -127,8 +127,6 @@ class MachineCom(object):
 				baudrate = 0
 			else:
 				baudrate = settingsBaudrate
-		if callbackObject == None:
-			callbackObject = MachineComPrintCallback()
 
 		self._port = port
 		self._baudrate = baudrate
@@ -1760,47 +1758,6 @@ class MachineCom(object):
 		if gcode is not None and gcode in self._long_running_commands:
 			self._long_running_command = True
 
-### MachineCom callback ################################################################################################
-
-class MachineComPrintCallback(object):
-	def on_comm_log(self, message):
-		pass
-
-	def on_comm_temperature_update(self, temp, bedTemp):
-		pass
-
-	def on_comm_state_change(self, state):
-		pass
-
-	def on_comm_message(self, message):
-		pass
-
-	def on_comm_progress(self):
-		pass
-
-	def on_comm_print_job_done(self):
-		pass
-
-	def on_comm_z_change(self, newZ):
-		pass
-
-	def on_comm_file_selected(self, filename, filesize, sd):
-		pass
-
-	def on_comm_sd_state_change(self, sdReady):
-		pass
-
-	def on_comm_sd_files(self, files):
-		pass
-
-	def on_comm_file_transfer_started(self, filename, filesize):
-		pass
-
-	def on_comm_file_transfer_done(self, filename):
-		pass
-
-	def on_comm_force_disconnect(self):
-		pass
 
 ### Printing file information classes ##################################################################################
 

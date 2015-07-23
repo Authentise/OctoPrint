@@ -50,7 +50,6 @@ user_permission = Permission(RoleNeed("user"))
 # only import the octoprint stuff down here, as it might depend on things defined above to be initialized already
 from octoprint.printer import get_connection_options
 from octoprint.printer.profile import PrinterProfileManager
-from octoprint.printer.standard import Printer
 from octoprint.settings import settings
 import octoprint.users as users
 import octoprint.events as events
@@ -182,7 +181,6 @@ class Server():
 		storage_managers = dict()
 		storage_managers[octoprint.filemanager.FileDestinations.LOCAL] = octoprint.filemanager.storage.LocalFileStorage(s.getBaseFolder("uploads"))
 		fileManager = octoprint.filemanager.FileManager(analysisQueue, slicingManager, printerProfileManager, initial_storage_managers=storage_managers)
-		printer = Printer(fileManager, analysisQueue, printerProfileManager)
 		appSessionManager = util.flask.AppSessionManager()
 		pluginLifecycleManager = LifecycleManager(pluginManager)
 
@@ -196,7 +194,6 @@ class Server():
 				analysis_queue=analysisQueue,
 				slicing_manager=slicingManager,
 				file_manager=fileManager,
-				printer=printer,
 				app_session_manager=appSessionManager,
 				plugin_lifecycle_manager=pluginLifecycleManager,
 				data_folder=os.path.join(settings().getBaseFolder("data"), name)
@@ -231,6 +228,12 @@ class Server():
 
 		pluginManager.implementation_inject_factories=[octoprint_plugin_inject_factory, settings_plugin_inject_factory]
 		pluginManager.initialize_implementations()
+
+		printer_implementations = pluginManager.get_implementations(octoprint.plugin.types.PrinterPlugin)
+		printer = printer_implementations[0]
+		# printer = pluginManager.get_plugin('octoprint_printer').__plugin_implementation__
+		pluginManager.get_plugin('pluginmanager').__plugin_implementation__._printer = printer
+		printer.startup(fileManager, analysisQueue, printerProfileManager)
 
 		settingsPlugins = pluginManager.get_implementations(octoprint.plugin.SettingsPlugin)
 		for implementation in settingsPlugins:
