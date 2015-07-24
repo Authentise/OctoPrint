@@ -16,6 +16,8 @@ import threading
 import time
 import re
 
+from . import comm
+
 import octoprint.plugin
 
 from octoprint import util
@@ -25,12 +27,11 @@ from octoprint.plugin import plugin_manager, ProgressPlugin
 from octoprint.printer import PrinterCallback, UnknownScript
 from octoprint.printer.estimation import TimeEstimationHelper
 from octoprint.settings import settings
-from octoprint.util import comm
 from octoprint.util import InvariantContainer
 
 
 class OctoPrintPrinter(octoprint.plugin.PrinterPlugin,
-						octoprint.plugin.MachineComPrintCallbackPlugin):
+		       octoprint.plugin.MachineComPrintCallbackPlugin):
 	"""
 	Default implementation of the `PrinterPlugin`. Manages the communication layer object and registers
 	itself with it as a callback to react to changes on the communication layer.
