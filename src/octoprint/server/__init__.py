@@ -231,9 +231,9 @@ class Server():
 
 		printer_implementations = pluginManager.get_implementations(octoprint.plugin.types.PrinterPlugin)
 		printer = printer_implementations[0]
-		# printer = pluginManager.get_plugin('octoprint_printer').__plugin_implementation__
-		pluginManager.get_plugin('pluginmanager').__plugin_implementation__._printer = printer
 		printer.startup(fileManager, analysisQueue, printerProfileManager)
+
+		pluginManager.get_plugin('pluginmanager').__plugin_implementation__._printer = printer
 
 		settingsPlugins = pluginManager.get_implementations(octoprint.plugin.SettingsPlugin)
 		for implementation in settingsPlugins:
